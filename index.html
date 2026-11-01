@@ -1,153 +1,113 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-  <meta name="theme-color" content="#789ca0">\n  <link rel="manifest" href="./manifest.json">\n  <link rel="icon" href="./pond-icon.svg" type="image/svg+xml">
-  <meta name="description" content="A quiet little pond. Guide fallen leaves across the water and leave delicate trails behind.">
-  <title>Leafy Pond</title>
-  <style>
-    :root { color-scheme: light; }
-    * { box-sizing: border-box; }
-    html, body { margin:0; width:100%; height:100%; overflow:hidden; background:#789ca0; }
-    body { font-family: Georgia, 'Times New Roman', serif; touch-action:none; }
-    canvas { display:block; width:100%; height:100%; }
-    .title { position:fixed; top: max(22px, env(safe-area-inset-top)); left:0; right:0; text-align:center; pointer-events:none; color:#f7f0df; text-shadow:0 1px 8px #25474a55; letter-spacing:.12em; font-size:clamp(19px,3vw,27px); font-weight:normal; }
-    .hint { position:fixed; bottom:max(25px,env(safe-area-inset-bottom)); left:0; right:0; text-align:center; color:#f4efdf; opacity:.78; font:12px/1.5 system-ui,sans-serif; letter-spacing:.08em; pointer-events:none; text-shadow:0 1px 6px #24474b66; transition:opacity 2s; }
-    .hint.fade { opacity:0; }
-    .sound { position:fixed; right:18px; top:max(18px,env(safe-area-inset-top)); border:1px solid #f5f0df66; border-radius:50%; width:40px; height:40px; background:#345f6060; color:#fff8e8; font-size:17px; cursor:pointer; backdrop-filter:blur(8px); }
-    .sound:focus-visible { outline:2px solid white; outline-offset:3px; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#78999a">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./pond-icon.svg" type="image/svg+xml">
+<meta name="description" content="A quiet little pond. Guide fallen leaves across the water and leave delicate trails behind.">
+<title>Leafy Pond</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#78999a}body{font-family:Georgia,serif;touch-action:none}canvas{display:block;width:100%;height:100%}
+.title{position:fixed;top:max(22px,env(safe-area-inset-top));left:0;right:0;text-align:center;pointer-events:none;color:#f7f0df;text-shadow:0 1px 8px #25474a55;letter-spacing:.12em;font-size:clamp(19px,3vw,27px);font-weight:normal}
+.hint{position:fixed;bottom:max(25px,env(safe-area-inset-bottom));left:0;right:0;text-align:center;color:#f4efdf;opacity:.78;font:12px/1.5 system-ui,sans-serif;letter-spacing:.08em;pointer-events:none;text-shadow:0 1px 6px #24474b66;transition:opacity 2s}.hint.fade{opacity:0}
+.sound{position:fixed;right:18px;top:max(18px,env(safe-area-inset-top));border:1px solid #f5f0df66;border-radius:50%;width:40px;height:40px;background:#345f6060;color:#fff8e8;font-size:17px;cursor:pointer;backdrop-filter:blur(8px)}
+</style>
 </head>
 <body>
-  <canvas id="pond" aria-label="A peaceful pond with floating autumn leaves. Drag a leaf across the water to draw a trail."></canvas>
-  <div class="title">leafy pond</div>
-  <button class="sound" id="sound" aria-label="Turn pond sounds on" title="Pond sounds">♪</button>
-  <div class="hint" id="hint">Gently move a leaf across the water</div>
+<canvas id="pond" aria-label="A peaceful pond with floating autumn leaves. Drag a leaf across the water to draw a trail."></canvas>
+<div class="title">leafy pond</div><button class="sound" id="sound" aria-label="Turn pond sounds on">♪</button><div class="hint" id="hint">Gently move a leaf across the water</div>
 <script>
-(() => {
-  const canvas = document.getElementById('pond'), ctx = canvas.getContext('2d');
-  const hint = document.getElementById('hint'), soundButton = document.getElementById('sound');
-  let w=0,h=0,dpr=1,last=0,elapsed=0,spawnClock=0, audio=null, soundOn=false;
-  const leaves=[], trails=[], ripples=[];
-  const palette = [
-    ['#c85c36','#e7a15d','#8f3d2d'], ['#d99a38','#f1c86c','#9d5d2b'],
-    ['#a94e35','#d47b4c','#713d32'], ['#b8a65b','#d8cf8a','#777747'],
-    ['#b86b45','#e0a06d','#874535']
-  ];
-  const rand=(a,b)=>a+Math.random()*(b-a);
-  function resize(){
-    dpr=Math.min(devicePixelRatio||1,2); w=innerWidth; h=innerHeight;
-    canvas.width=Math.round(w*dpr); canvas.height=Math.round(h*dpr);
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-    if(!leaves.length){ for(let i=0;i<7;i++) addLeaf(rand(w*.08,w*.92),rand(h*.16,h*.88),false); }
+(()=>{
+const canvas=document.getElementById('pond'),ctx=canvas.getContext('2d'),hint=document.getElementById('hint'),soundButton=document.getElementById('sound');
+let w=0,h=0,dpr=1,last=0,elapsed=0,spawnClock=0,audio=null,soundOn=false,active=null,offset={x:0,y:0};
+const leaves=[],wakes=[],ripples=[];
+const palette=[['#c65a36','#e9a66b','#873e30'],['#d59a36','#f1ce79','#96572c'],['#a94d38','#d67c53','#743b31'],['#a9a05a','#d8cc87','#6d7048'],['#b66b49','#e5a779','#854432']];
+const rand=(a,b)=>a+Math.random()*(b-a);
+function resize(){dpr=Math.min(devicePixelRatio||1,2);w=innerWidth;h=innerHeight;canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);if(!leaves.length){for(let i=0;i<4;i++)addLeaf(rand(w*.12,w*.88),rand(h*.18,h*.84),false)}}
+function addLeaf(x,y,fall=true){
+ const colors=palette[Math.floor(Math.random()*palette.length)],size=rand(27,38);
+ leaves.push({x,y,px:x,py:y,vx:rand(-3,3),vy:fall?rand(24,38):rand(-1,1),angle:rand(-Math.PI,Math.PI),spin:rand(-.18,.18),size,colors,fall,phase:rand(0,8),drag:false,trailClock:0,fallStart:y,fallDistance:fall?rand(58,112):0,alpha:fall?0:1});
+}
+function water(){
+ ctx.fillStyle='#799b9b';ctx.fillRect(0,0,w,h);
+ // Loose, translucent watercolor pools, with uneven hand-painted edges.
+ for(let i=0;i<23;i++){
+  const x=(i*137+Math.sin(elapsed*.035+i*1.7)*31)%w,y=(i*223+Math.cos(elapsed*.028+i)*24)%h;
+  ctx.save();ctx.globalAlpha=.07+(i%3)*.018;ctx.fillStyle=i%2?'#d3d4b7':'#426f76';
+  ctx.beginPath();ctx.moveTo(x-65,y-12);ctx.bezierCurveTo(x-42,y-53,x+35,y-48,x+61,y-9);ctx.bezierCurveTo(x+82,y+24,x+21,y+49,x-22,y+37);ctx.bezierCurveTo(x-61,y+31,x-83,y+17,x-65,y-12);ctx.fill();ctx.restore();
+ }
+ // Broken, lightly sketched surface marks rather than continuous digital ripples.
+ ctx.save();ctx.lineCap='round';
+ for(let i=0;i<54;i++){
+  const x=(i*97+Math.sin(i*3.1)*34)%w,y=(i*61+Math.cos(i*1.9)*22+elapsed*(i%2?2:-1))%h;
+  ctx.globalAlpha=.12+(i%4)*.025;ctx.strokeStyle=i%3?'#dce0c9':'#426f76';ctx.lineWidth=i%4===0?2:1;
+  ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(x+rand(7,17),y+rand(-2,2),x+rand(18,34),y+rand(-3,3));ctx.stroke();
+ }
+ ctx.restore();
+ // Fine pigment grain.
+ ctx.save();ctx.globalAlpha=.08;for(let i=0;i<170;i++){const x=(i*71.7)%w,y=(i*137.3)%h;ctx.fillStyle=i%2?'#e9e2c9':'#345e65';ctx.fillRect(x,y,1.2,1.2)}ctx.restore();
+}
+function drawLeaf(l){
+ ctx.save();ctx.translate(l.x,l.y);ctx.rotate(l.angle);ctx.globalAlpha=l.alpha;const s=l.size;
+ ctx.shadowColor='#244e4b33';ctx.shadowBlur=4;ctx.shadowOffsetY=2;
+ // Hand-drawn asymmetric leaf silhouette.
+ ctx.beginPath();ctx.moveTo(0,-s);
+ ctx.bezierCurveTo(s*.19,-s*.72,s*.76,-s*.69,s*.73,-s*.22);
+ ctx.quadraticCurveTo(s*1.05,s*.12,s*.57,s*.56);
+ ctx.quadraticCurveTo(s*.28,s*.88,0,s);
+ ctx.quadraticCurveTo(-s*.3,s*.83,-s*.57,s*.56);
+ ctx.quadraticCurveTo(-s*1.02,s*.12,-s*.72,-s*.2);
+ ctx.bezierCurveTo(-s*.77,-s*.65,-s*.18,-s*.75,0,-s);ctx.closePath();
+ const g=ctx.createLinearGradient(-s,-s,s,s);g.addColorStop(0,l.colors[1]);g.addColorStop(.46,l.colors[0]);g.addColorStop(1,l.colors[2]);ctx.fillStyle=g;ctx.fill();
+ ctx.shadowColor='transparent';ctx.strokeStyle=l.colors[2];ctx.lineWidth=1.35;ctx.stroke();
+ // Slightly imperfect inked edge, fine central vein and side veins.
+ ctx.beginPath();ctx.moveTo(0,s*.84);ctx.quadraticCurveTo(-s*.07,0,0,-s*.83);ctx.strokeStyle='#f5dfb0cc';ctx.lineWidth=1.35;ctx.stroke();
+ for(let i=0;i<6;i++){const t=(i+1)/7,yy=s*.7-t*s*1.43,spread=Math.sin(t*Math.PI)*s*.53;
+  ctx.beginPath();ctx.moveTo(0,yy+s*.08);ctx.quadraticCurveTo(spread*.35,yy,spread,yy-s*.12);ctx.moveTo(0,yy+s*.08);ctx.quadraticCurveTo(-spread*.35,yy,-spread,yy-s*.12);
+  ctx.strokeStyle='#f4d8a0a8';ctx.lineWidth=.85;ctx.stroke();
+ }
+ // Tiny hand-painted pigment flecks.
+ ctx.globalAlpha*=.24;for(let i=0;i<9;i++){ctx.fillStyle=l.colors[2];ctx.beginPath();ctx.ellipse(rand(-s*.4,s*.4),rand(-s*.55,s*.55),rand(.5,1.4),rand(1,2),rand(-1,1),0,Math.PI*2);ctx.fill()}
+ ctx.restore();
+}
+function drawWake(t){
+ ctx.save();const a=Math.max(0,t.life);ctx.globalAlpha=a*.48;ctx.lineCap='round';ctx.lineJoin='round';
+ const dx=t.x2-t.x1,dy=t.y2-t.y1,len=Math.hypot(dx,dy)||1,px=-dy/len,py=dx/len;
+ for(const side of [-1,1]){
+  ctx.beginPath();ctx.moveTo(t.x1+px*side*1.2,t.y1+py*side*1.2);
+  ctx.quadraticCurveTo((t.x1+t.x2)/2+px*side*(5+len*.17),(t.y1+t.y2)/2+py*side*(5+len*.17),t.x2+px*side*(2+len*.08),t.y2+py*side*(2+len*.08));
+  ctx.strokeStyle='#e9edda';ctx.lineWidth=1.25;ctx.stroke();
+ }
+ ctx.globalAlpha=a*.18;ctx.beginPath();ctx.ellipse((t.x1+t.x2)/2,(t.y1+t.y2)/2,Math.max(3,len*.24),Math.max(1,len*.045),Math.atan2(dy,dx),0,Math.PI*2);ctx.strokeStyle='#f7f1dc';ctx.lineWidth=2;ctx.stroke();ctx.restore();
+}
+function drawRipple(r){
+ ctx.save();const a=Math.max(0,r.life);ctx.globalAlpha=a*.34;ctx.strokeStyle='#f3eed6';ctx.lineWidth=1.15;
+ for(let k=0;k<2;k++){ctx.beginPath();ctx.ellipse(r.x,r.y,r.radius*(1+k*.48),r.radius*(.48+k*.2),-.12,0,Math.PI*2);ctx.stroke()}
+ ctx.restore();
+}
+function frame(ts){
+ const dt=Math.min((ts-last)/1000||0,.04);last=ts;elapsed+=dt;spawnClock+=dt;water();
+ for(let i=wakes.length-1;i>=0;i--){const t=wakes[i];t.life-=dt*1.05;if(t.life<=0)wakes.splice(i,1);else drawWake(t)}
+ for(let i=ripples.length-1;i>=0;i--){const r=ripples[i];r.radius+=dt*17;r.life-=dt*1.15;if(r.life<=0)ripples.splice(i,1);else drawRipple(r)}
+ if(spawnClock>4.7&&leaves.filter(l=>!l.fall).length<5){spawnClock=0;addLeaf(rand(w*.09,w*.91),rand(h*.12,h*.75),true)}
+ for(let i=leaves.length-1;i>=0;i--){const l=leaves[i];l.px=l.x;l.py=l.y;
+  if(!l.drag){l.phase+=dt;l.x+=l.vx*dt+Math.sin(elapsed*.48+l.phase)*3.5*dt;l.y+=l.vy*dt;l.angle+=l.spin*dt;
+   if(l.fall){l.alpha=Math.min(1,l.alpha+dt*1.5);if(l.y-l.fallStart>=l.fallDistance){l.fall=false;l.vy=rand(-.5,.5);l.alpha=1;ripples.push({x:l.x,y:l.y,radius:2,life:1})}}
   }
-  function addLeaf(x=rand(w*.12,w*.88),y=-30,fall=true){
-    const colors=palette[Math.floor(Math.random()*palette.length)];
-    leaves.push({x,y,px:x,py:y,vx:rand(-.12,.12),vy:fall?rand(13,25):rand(-.1,.1),angle:rand(-Math.PI,Math.PI),spin:rand(-.15,.15),size:rand(17,29),colors,fall,phase:rand(0,8),drag:false,trailClock:0});
-  }
-  function water(){
-    const g=ctx.createLinearGradient(0,0,w,h);
-    g.addColorStop(0,'#a9c0b5'); g.addColorStop(.45,'#779fa0'); g.addColorStop(1,'#527e83');
-    ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
-    // Soft, broad watercolor washes.
-    for(let i=0;i<13;i++){
-      const x=(i*173+Math.sin(elapsed*.07+i)*38)%w, y=(i*251+Math.cos(elapsed*.05+i)*28)%h;
-      const rg=ctx.createRadialGradient(x,y,2,x,y,rand(55,125));
-      rg.addColorStop(0,'rgba(225,231,207,.10)'); rg.addColorStop(1,'rgba(225,231,207,0)');
-      ctx.fillStyle=rg; ctx.fillRect(x-130,y-130,260,260);
-    }
-    ctx.save(); ctx.globalAlpha=.13; ctx.strokeStyle='#e7e5cf'; ctx.lineWidth=1;
-    for(let i=0;i<18;i++){
-      const y=(i*71+elapsed*2.4)%h;
-      ctx.beginPath(); ctx.moveTo(0,y); ctx.bezierCurveTo(w*.28,y-8,w*.65,y+9,w,y-3); ctx.stroke();
-    }
-    ctx.restore();
-  }
-  function drawLeaf(l){
-    ctx.save(); ctx.translate(l.x,l.y); ctx.rotate(l.angle);
-    const s=l.size;
-    ctx.shadowColor='#244e4b44'; ctx.shadowBlur=7; ctx.shadowOffsetY=3;
-    ctx.beginPath(); ctx.moveTo(0,-s*.95);
-    ctx.bezierCurveTo(s*.12,-s*.62,s*.72,-s*.55,s*.68,-s*.12);
-    ctx.bezierCurveTo(s*1.02,s*.3,s*.48,s*.78,0,s);
-    ctx.bezierCurveTo(-s*.45,s*.7,-s*.95,s*.32,-s*.65,-s*.1);
-    ctx.bezierCurveTo(-s*.78,-s*.55,-s*.15,-s*.62,0,-s*.95);
-    ctx.closePath();
-    const g=ctx.createLinearGradient(-s,-s,s,s);
-    g.addColorStop(0,l.colors[1]); g.addColorStop(.48,l.colors[0]); g.addColorStop(1,l.colors[2]);
-    ctx.fillStyle=g; ctx.fill();
-    ctx.shadowColor='transparent'; ctx.lineWidth=1; ctx.strokeStyle=l.colors[2]+'aa'; ctx.stroke();
-    // Fine, slightly irregular veins.
-    ctx.beginPath(); ctx.moveTo(0,s*.83); ctx.quadraticCurveTo(-1,0,0,-s*.82);
-    ctx.strokeStyle='#f5d7a088'; ctx.lineWidth=1.15; ctx.stroke();
-    for(let i=0;i<5;i++){
-      const t=(i+1)/6, yy=s*.72-t*s*1.48, spread=Math.sin(t*Math.PI)*s*.52;
-      ctx.beginPath(); ctx.moveTo(0,yy+s*.1); ctx.quadraticCurveTo(spread*.25,yy,spread,yy-s*.12);
-      ctx.moveTo(0,yy+s*.1); ctx.quadraticCurveTo(-spread*.25,yy,-spread,yy-s*.12);
-      ctx.strokeStyle='#f4d4a077'; ctx.lineWidth=.7; ctx.stroke();
-    }
-    ctx.restore();
-  }
-  function drawTrail(t){
-    ctx.save(); ctx.globalAlpha=t.life*.35; ctx.lineCap='round'; ctx.lineJoin='round';
-    ctx.strokeStyle='#f4edcf'; ctx.lineWidth=t.width;
-    ctx.beginPath(); t.points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)); ctx.stroke();
-    ctx.strokeStyle='#d9e6d5'; ctx.lineWidth=t.width*.45; ctx.globalAlpha=t.life*.45;
-    ctx.stroke(); ctx.restore();
-  }
-  function drawRipple(r){
-    ctx.save(); ctx.globalAlpha=r.life*.25; ctx.strokeStyle='#f4f0d9'; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.ellipse(r.x,r.y,r.radius*1.35,r.radius*.58,-.12,0,Math.PI*2); ctx.stroke(); ctx.restore();
-  }
-  function frame(ts){
-    const dt=Math.min((ts-last)/1000||0,.04); last=ts; elapsed+=dt; spawnClock+=dt;
-    water();
-    for(let i=trails.length-1;i>=0;i--){const t=trails[i];t.life-=dt*.045;if(t.life<=0)trails.splice(i,1);else drawTrail(t);}
-    for(let i=ripples.length-1;i>=0;i--){const r=ripples[i];r.radius+=dt*13;r.life-=dt*.22;if(r.life<=0)ripples.splice(i,1);else drawRipple(r);}
-    if(spawnClock>3.2 && leaves.filter(l=>l.fall).length<5){spawnClock=0;addLeaf(rand(w*.12,w*.88),-35,true);}
-    for(let i=leaves.length-1;i>=0;i--){
-      const l=leaves[i]; l.px=l.x;l.py=l.y;
-      if(!l.drag){l.phase+=dt;l.x+=l.vx+Math.sin(elapsed*.65+l.phase)*5*dt;l.y+=l.vy*dt;l.angle+=l.spin*dt;
-        if(l.fall && l.y>h*.18){l.fall=false;l.vy=rand(-.3,.3);ripples.push({x:l.x,y:l.y,radius:3,life:1});}
-      }
-      if(l.y>h+70){leaves.splice(i,1);continue;}
-      drawLeaf(l);
-    }
-    requestAnimationFrame(frame);
-  }
-  function pos(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
-  let active=null,offset={x:0,y:0};
-  canvas.addEventListener('pointerdown',e=>{
-    const p=pos(e); let best=null,dist=Infinity;
-    for(const l of leaves){const d=Math.hypot(l.x-p.x,l.y-p.y);if(d<l.size*1.5&&d<dist){best=l;dist=d;}}
-    if(best){active=best;best.drag=true;offset.x=best.x-p.x;offset.y=best.y-p.y;canvas.setPointerCapture(e.pointerId);hint.classList.add('fade');}
-  });
-  canvas.addEventListener('pointermove',e=>{
-    if(!active)return;const p=pos(e);active.x=p.x+offset.x;active.y=p.y+offset.y;
-    active.angle+=(active.x-active.px)*.008;
-    active.trailClock++;
-    if(active.trailClock%2===0){
-      trails.push({points:[{x:active.px,y:active.py},{x:active.x,y:active.y}],life:1,width:rand(2,4)});
-      if(trails.length>220)trails.shift();
-    }
-  });
-  function release(){if(active){active.drag=false;active.vx=rand(-.15,.15);active.vy=rand(-.15,.15);ripples.push({x:active.x,y:active.y,radius:2,life:1});active=null;}}
-  canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
-  function toggleSound(){
-    if(!soundOn){
-      const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
-      audio=new AC();const master=audio.createGain();master.gain.value=.035;master.connect(audio.destination);
-      const buffer=audio.createBuffer(1,audio.sampleRate*2,audio.sampleRate),data=buffer.getChannelData(0);
-      for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*.12;
-      const noise=audio.createBufferSource();noise.buffer=buffer;noise.loop=true;
-      const filter=audio.createBiquadFilter();filter.type='lowpass';filter.frequency.value=420;
-      const gain=audio.createGain();gain.gain.value=.16;noise.connect(filter);filter.connect(gain);gain.connect(master);noise.start();
-      soundOn=true;soundButton.textContent='♫';soundButton.setAttribute('aria-label','Turn pond sounds off');
-    }else{if(audio)audio.close();audio=null;soundOn=false;soundButton.textContent='♪';soundButton.setAttribute('aria-label','Turn pond sounds on');}
-  }
-  soundButton.addEventListener('click',toggleSound);
-  window.addEventListener('resize',resize);resize();requestAnimationFrame(frame);\n  if ('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+  if(l.y>h+70||l.x<-90||l.x>w+90){leaves.splice(i,1);continue}drawLeaf(l)
+ }
+ requestAnimationFrame(frame);
+}
+function pos(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
+canvas.addEventListener('pointerdown',e=>{const p=pos(e);let best=null,dist=Infinity;for(const l of leaves){if(l.fall)continue;const d=Math.hypot(l.x-p.x,l.y-p.y);if(d<l.size*1.5&&d<dist){best=l;dist=d}}if(best){active=best;best.drag=true;offset.x=best.x-p.x;offset.y=best.y-p.y;canvas.setPointerCapture(e.pointerId);hint.classList.add('fade')}});
+canvas.addEventListener('pointermove',e=>{if(!active)return;const p=pos(e);active.x=p.x+offset.x;active.y=p.y+offset.y;active.angle+=(active.x-active.px)*.006;active.trailClock++;if(active.trailClock%2===0){wakes.push({x1:active.px,y1:active.py,x2:active.x,y2:active.y,life:1});if(wakes.length>100)wakes.shift()}});
+function release(){if(active){active.drag=false;active.vx=rand(-2,2);active.vy=rand(-1,1);ripples.push({x:active.x,y:active.y,radius:2,life:.8});active=null}}
+canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
+function toggleSound(){if(!soundOn){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;audio=new AC();const master=audio.createGain();master.gain.value=.035;master.connect(audio.destination);const buffer=audio.createBuffer(1,audio.sampleRate*2,audio.sampleRate),data=buffer.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*.12;const noise=audio.createBufferSource();noise.buffer=buffer;noise.loop=true;const filter=audio.createBiquadFilter();filter.type='lowpass';filter.frequency.value=420;const gain=audio.createGain();gain.gain.value=.16;noise.connect(filter);filter.connect(gain);gain.connect(master);noise.start();soundOn=true;soundButton.textContent='♫'}else{if(audio)audio.close();audio=null;soundOn=false;soundButton.textContent='♪'}}
+soundButton.addEventListener('click',toggleSound);window.addEventListener('resize',resize);resize();requestAnimationFrame(frame);
+if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 })();
 </script>
 </body></html>
