@@ -1,0 +1,19 @@
+{
+  "name": "Leafy Pond",
+  "short_name": "Leafy Pond",
+  "description": "A quiet little pond. Guide fallen leaves across the water.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#789ca0",
+  "theme_color": "#789ca0",
+  "icons": [
+    {
+      "src": "./pond-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
