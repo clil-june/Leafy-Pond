@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-  <meta name="theme-color" content="#789ca0">
+  <meta name="theme-color" content="#789ca0">\n  <link rel="manifest" href="./manifest.json">\n  <link rel="icon" href="./pond-icon.svg" type="image/svg+xml">
   <meta name="description" content="A quiet little pond. Guide fallen leaves across the water and leave delicate trails behind.">
   <title>Leafy Pond</title>
   <style>
@@ -147,7 +147,7 @@
     }else{if(audio)audio.close();audio=null;soundOn=false;soundButton.textContent='♪';soundButton.setAttribute('aria-label','Turn pond sounds on');}
   }
   soundButton.addEventListener('click',toggleSound);
-  window.addEventListener('resize',resize);resize();requestAnimationFrame(frame);
+  window.addEventListener('resize',resize);resize();requestAnimationFrame(frame);\n  if ('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 })();
 </script>
 </body></html>
